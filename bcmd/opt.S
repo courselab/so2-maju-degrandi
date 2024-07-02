@@ -42,7 +42,7 @@ strcmp_end:
 	mov %ax, strcmp_tmp  /* Save %ax before popa.                        */
 	popa	             /* Restore all GP registers.                    */
 	mov strcmp_tmp, %ax  /* Restore %ax after popa.                      */
-	ret               /* Return.                                         */
+	ret                  /* Return.                                      */
 
 	.section .data
 
