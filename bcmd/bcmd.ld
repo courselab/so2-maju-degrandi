@@ -1,9 +1,12 @@
 /*
  *    SPDX-FileCopyrightText: 2021 Monaco F. J. <monaco@usp.br>
- *   
+ *    SPDX-FileCopyrightText: 2024 Maria Júlia De Grandi <maju.degrandi@usp.br>
+ *
  *    SPDX-License-Identifier: GPL-3.0-or-later
  *
- *    This file is part of SYSeg, available at https://gitlab.com/monaco/syseg.
+ *  This file is a derivative work from SYSeg (https://gitlab.com/monaco/syseg)
+ *  and contains modifications carried out by the following author(s):
+ *  Maria Júlia De Grandi <maju.degrandi@usp.br>
  */
 
 
