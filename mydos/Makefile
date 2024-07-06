@@ -1,41 +1,100 @@
 #    SPDX-FileCopyrightText: 2021 Monaco F. J. <monaco@usp.br>
-#    SPDX-FileCopyrightText: 2024 maju-degrandi <maju.degrandi@usp.br>
-#   
+#    SPDX-FileCopyrightText: 2024 Arthur Vergaças <arthur.vergacas@usp.br>
+#    SPDX-FileCopyrightText: 2024 Maria Júlia De Grandi <maju.degrandi@usp.br>
+#
 #    SPDX-License-Identifier: GPL-3.0-or-later
 #
 #  This file is a derivative work from SYSeg (https://gitlab.com/monaco/syseg)
 #  and contains modifications carried out by the following author(s):
-#  maju-degrandi <maju.degrandi@usp.br>
+#  Arthur Vergaças <arthur.vergacas@usp.br>
 
+###########################################################
 ##
-## Relevent files for this exercise.
+## These are the rules of interest in this set of examples.
 ##
 
-all: hw.bin
 
-hw.bin : hw.S hwasm
-	./hwasm hw.S hw.bin
 
-hwasm : hwasm.c
-	gcc -Wall -std=c99 hwasm.c -o hwasm
+# By default, the bootable program name will by $(dosname).bin
+# If you export this directory to extend the example as part of a programming
+# exercise, redefine $(dos) to reflect your own DOS name, say
+dos = "ArjuDOS"
 
-hw2.bin: hw2.o
-	ld -melf_i386 --oformat=binary -Ttext=0x7c00 hw2.o -o h2.bin
+# dos=$(shell basename $$(realpath .))
 
-hw2.o: hw.S
-	as --32 hw.S -o hw.o
+# Build the OS and an example user program.
 
+all: $(dos).bin prog.bin
+
+# Link all objects needed by the OS.
+
+$(dos).bin : bootloader.o bios1.o kernel.o file_system.o kaux.o bios2.o logo.o syscall.o
+	ld -melf_i386 -T tydos.ld --orphan-handling=discard $^ -o $@
+
+# Here we are statically linking the user program 'prog.o' into the kernel,
+# so as to simulate the execution of a user program. If we were to actually load
+# and execute an external program, we should remove 'prog.o' and 'libtydos.o'
+# from the list of pre-requisites, and edit the linker script accordingly.
+# Comment out the following line if this is the case.
+
+# $(dos).bin : prog.o libtydos.o
+
+# Rules to build objects from either C or assembly code.
+
+%.o : %.c
+	gcc -m16 -O0 --freestanding -fno-pic -fcf-protection=none -c $(CFLAGS) $< -o $@
+
+%.o : %.S
+	as -32 $< -o $@
+
+bootloader.o : bios1.h kernel.h
+kernel.o : bios1.h bios2.h kernel.h kaux.h file_system.h
+kaux.o:    bios2.h kaux.h
+file_system.o: kaux.h file_system.h
+
+$(dos).bin : .EXTRA_PREREQS = rt0.o tydos.ld
+
+# Rules to build the user programs
+# You would add new programs to this variable if bulding other user programs.
+# The user library is automatically added by the linker script.
+
+progs = prog.bin hello.bin
+
+$(progs)  : %.bin : %.o libtydos.a
+	ld -melf_i386 -T prog.ld --orphan-handling=discard $< -o $@
+
+$(progs:%.bin=%.o) : %.o : %.c tydos.h
+	gcc -m16 -O0 --freestanding -fno-pic -fcf-protection=none -c $(CFLAGS) $< -o $@
+
+$(progs:%.bin=%.o) : tydos.h
+
+$(progs:%.bin=%.o) : .EXTRA_PREREQS = crt0.o prog.ld
+
+# Recipes to build the user library.
+
+libtydos.o: libtydos.c tydos.h
+	gcc -m16 -O0 --freestanding -fno-pic -fcf-protection=none -c $(CFLAGS) $< -o $@
+
+libtydos.o : tydos.h
+
+libtydos.a : libtydos.o
+	ar rcs $@ $^
+
+# Create a 1.44 MB floppy image (2880 * 512 bytes)
+
+disk.img:
+	rm -f $@
+	dd if=/dev/zero of=$@ count=2880
+
+load-dos: $(dos).bin
+	dd bs=1 if=$< of=disk.img iseek=16 oseek=16 conv=notrunc
+
+# Housekeeping.
 
 .PHONY: clean
 
 clean:
-	rm -rf *.bin *.o
-	rm -f *~ 
-
-# Create stand-alone distribution
-
-EXPORT_FILES = README Makefile
-EXPORT_NEW_FILES = NOTEBOOK
+	rm -f *.bin *.o *~ *.s *.a
 
 
 ## Bintools: convenience rules for inspecting binary files
@@ -93,7 +152,7 @@ endif
 endif
 
 
-intel att 16 32: 
+intel att 16 32:
 	@echo > /dev/null
 
 ##
@@ -133,7 +192,7 @@ endif
 
 diss d diss* d* : baz=$(bar)
 
-diss d diss* d*: $(IMG) 
+diss d diss* d*: $(IMG)
 	@objdump -f $< > /dev/null 2>&1; \
 	if test $$? -eq 1   ; then \
 	  objdump -M $(ASM_SYNTAX) -b binary -m $(ASM_MACHINE) -D $< | "$(objdump_nop)"; \
@@ -146,7 +205,7 @@ diss d diss* d*: $(IMG)
 	fi
 
 %/diss %/d %/diss* %/d*: %
-	make $(@F) IMG=$< $(filter 16 32 intel att $(opts) $(symbol), $(MAKECMDGOALS)) 
+	make $(@F) IMG=$< $(filter 16 32 intel att $(opts) $(symbol), $(MAKECMDGOALS))
 
 %/i16 %/16i : %
 	make --quiet $</diss intel 16 $(opts) $(symbol)
@@ -176,7 +235,7 @@ diss d diss* d*: $(IMG)
 ## Run on the emulator
 ##
 
-# 
+#
 #
 # %/run : %
 # 	@i=$< &&\
@@ -198,20 +257,20 @@ diss d diss* d*: $(IMG)
 	make run IMG=$<
 
 run: $(IMG)
-	qemu-system-i386 -drive format=raw,file=$< -net none -nographic
+	qemu-system-i386 -drive format=raw,file=$< -net none
 
 # These are deprecate; use %/run, instead.
 
 run-bin: $(IMG)
-	qemu-system-i386 -drive format=raw,file=$< -net none -nographic
+	qemu-system-i386 -drive format=raw,file=$< -net none
 	@echo "Shortcut run-bin is deprecated: use 'make run' instead."
 
 run-iso: $(IMG)
-	qemu-system-i386 -drive format=raw,file=$< -net none -nographic
+	qemu-system-i386 -drive format=raw,file=$< -net none
 	@echo "Shortcut run-iso is deprecated: use 'make run' instead."
 
 run-fd : $(IMG)
-	qemu-system-i386 -drive format=raw,file=$< -net none -nographic
+	qemu-system-i386 -drive format=raw,file=$< -net none
 	@echo "Shortcut run-fd is deprecated: use 'make run' instead."
 
 
@@ -223,7 +282,7 @@ hex raw dump: $(IMG)
 
 
 %/hex %raw %/dump : %
-	make --quiet dump IMG=$< 
+	make --quiet dump IMG=$<
 
 
 # Diff-compare
@@ -304,15 +363,15 @@ diffa32 da32 a32:
 %.iso : %.bin
 	xorriso -as mkisofs -b $< -o $@ -isohybrid-mbr $< -no-emul-boot -boot-load-size 4 ./
 
-%.img : %.bin
-	dd if=/dev/zero of=$@ bs=1024 count=1440
-	dd if=$< of=$@ seek=0 conv=notrunc
+# %.img : %.bin
+# 	dd if=/dev/zero of=$@ bs=1024 count=1440
+# 	dd if=$< of=$@ seek=0 conv=notrunc
 
 
 
 stick: $(IMG)
 	@if test -z "$(DEVICE)"; then \
-	echo "*** ATTENTION: make IMG=foo.bin DEVICE=/dev/X"; exit 1; fi 
+	echo "*** ATTENTION: make IMG=foo.bin DEVICE=/dev/X"; exit 1; fi
 	dd if=$< of=$(DEVICE)
 
 %/stick: %
@@ -329,12 +388,16 @@ stick: $(IMG)
 
 
 
+EXPORT_FILES = Makefile README bootloader.c kernel.c kernel.h kaux.c kaux.h file_system.c file_system.h bios1.S bios1.h bios2.S bios2.h syscall.c tydos.ld  libtydos.c tydos.h tydos.h prog.ld rt0.S  logo.c
+EXPORT_NEW_FILES = NOTEBOOK
+
+
 ## Export rules.
 ## These rules are not relevant for the exercise.
 ## They are used by SYSeg to create a self-contained distribution bundle
 ## of the source directory, suitable for exporting project files.
 
-TARNAME=hw
+TARNAME=$(dos)
 
 
 syseg-export export:
@@ -369,6 +432,8 @@ clean-export:
 
 
 
+
+
 # Update docm4 files.
 #
 # These rules are not relevant for the source-code examples in this directory.
@@ -382,17 +447,17 @@ ifneq (yes,$(DOCM4_DIST))
 
 docm4_deps = ../../tools/docm4.m4 ../../tools/bintools.m4
 
-Makefile : Makefile.m4 $(docm4_deps) 
+Makefile : Makefile.m4 $(docm4_deps)
 	@path=$$(pwd) ; dir=$${path##*/};\
 	 make -C .. $$dir/Makefile;
 	@echo "syseg>>: Makefile has changed: all targets may need to be rebuilt."
 	@echo "Building" $$(test -z "$(MAKECMDGOALS)" && echo "the default target" || echo "$(MAKECMDGOALS)")
 	@make -f Makefile $(MAKECMDGOALS)
 
-docm4_supported_files = README 
+docm4_supported_files = README
 
 $(docm4_supported_files): % : %.m4 $(docm4_deps)
-	@path=$$(pwd) ; dir=$${path##*/}; make -C .. $$dir/$(*) 
+	@path=$$(pwd) ; dir=$${path##*/}; make -C .. $$dir/$(*)
 
 updatem4: Makefile
 #	@path=$$(pwd) ; dir=$${path##*/}; make -C .. $$(for i in $(docm4_supported_files); do test -f $$dir/$$i.m4 && echo "$$dir/$$i" ; done)
@@ -401,6 +466,5 @@ updatem4: Makefile
 endif
 
 # End of update docm4 files.
-
 
 

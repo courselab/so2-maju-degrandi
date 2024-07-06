@@ -1,7 +1,7 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: so2-maju-degrandi
 Upstream-Contact: maju-degrandi <maju.degrandi@usp.br>
-Source: https://github.com/courselab/so2-maju-degrandi.git
+Source: https://github.com/courselab/so2-maju-degrandi
 
 Files: */.dist
 Copyright: maju-degrandi <maju.degrandi@usp.br>

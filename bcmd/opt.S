@@ -1,11 +1,11 @@
-#    SPDX-FileCopyrightText: 2024 Maria Júlia De Grandi <maju.degrandi@usp.br>
 #    SPDX-FileCopyrightText: 2024 Monaco F. J. <monaco@usp.br>
-#
+#    SPDX-FileCopyrightText: 2024 maju-degrandi <maju.degrandi@usp.br>
+#   
 #    SPDX-License-Identifier: GPL-3.0-or-later
 #
 #  This file is a derivative work from SYSeg (https://gitlab.com/monaco/syseg)
 #  and contains modifications carried out by the following author(s):
-#  Maria Júlia De Grandi <maju.degrandi@usp.br>
+#  maju-degrandi <maju.degrandi@usp.br>
 
 	.code16
 	.global strcmp
@@ -42,7 +42,7 @@ strcmp_end:
 	mov %ax, strcmp_tmp  /* Save %ax before popa.                        */
 	popa	             /* Restore all GP registers.                    */
 	mov strcmp_tmp, %ax  /* Restore %ax after popa.                      */
-	ret                  /* Return.                                      */
+	ret               /* Return.                                         */
 
 	.section .data
 

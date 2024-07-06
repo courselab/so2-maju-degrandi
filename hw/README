@@ -7,70 +7,143 @@
 #  and contains modifications carried out by the following author(s):
 #  maju-degrandi <maju.degrandi@usp.br>
 
- BootCmd : Boot Command
- ==============================
- 
- BootCmd is a very simple command-line interpreter that fits entirely
- within the first 512-byte sector of a USB stick. It is meant to be loaded by
- the BIOS legacy boot method and execute in x86 real-mode.
+ Bare-Metal Hello World
+ ==============================================
 
- Currently, the program implements only a single built-in command 'help'.
+ This activity is meant for practicing the concepts and techniques addressed by
+ the series of examples in section 'syseg/eg/hw'.
 
  Challenge
  ------------------------------
+ 
+ In the following instructions, conisder that the program 'eg.asm' is one of the
+ example programs 'eg/hw/hw-01.asm' or 'eg/hw/hw-02.asm' by your own choice
+ (picking the latter is a signal of boldness, but the former is not bad either). 
 
-1) Build and execute BootCmd:
+ This directory includes a 'Makefile' script with a set of handy rules
+ preconfigure for your convenience.
+ 
 
-   make
-   make bcmd.bin/run
+ 1) Assembler
 
-2) Take some time to understand the program source.
+    a) Rewrite program 'eg.asm' as 'hw.S', using AT&T assembly syntax.
 
-   The file 'main.c' contains the the main program, in plain C.
+    b) Implement an ad hoc assembler+linker program 'hwasm' that takes 'hw.S'
+       as input, and produces a flat-binary 'hw.bin', suitable to be loaded and
+       executed using the x86 BIOS legacy boot.
 
-   Observe that the 'main' function calls some auxiliary functions implemented
-   using BIOS services. Those functions are conveniently written in assembly in
-   the source file 'bios.S'
-   
-   The 'strcmp' function, on the other hand, can be written in plain C, and is
-   implemented in the file 'utils.c'.
-   
-   The program is linked using the linker script 'bcmd.ld', that takes care of
-   the static relocation to match the load address, ensemble the relevant
-   object sections into a flat binary, and adds the boot signature.
+       Write 'hwasm.c' in C, using only the ISO-C standard library [1].
 
-   The linker scripts also prepends the program with 'rt0.o' (created from
-   rt0.S), which performs the basic C runtime initialization, including the
-   proper  initialization of registers and ensuring that 'main' is the entry
-   function.
+       The assembler may be a specific-purpose implementation that works only
+       with the given input.
 
-   For simplicity, all functions are assumed to implement the fastcall calling
-   convention, which means that function arguments, if any, are passed through
-   registers %cx and %dx, and that return values are passed back to caller
-   using register %ax.
 
-   Go through the 'Makefile' script to see how each component is built from its
-   source. Consult gcc manual if needed to recall the command-line compiler
-   options (we use flag '-Os' with 'utils.o' to optimize for size).
-   
+    c) Use 'hwasm' to assemble 'hw.S' and produce 'hw.bin'.
 
-3) Implement a new built-in command.
+       To assembly any file 'foo.S' the program must be invoked like
+       'hwasm foo.S' to produce 'foo.bin'.
 
-   Think of a new command, such as to return the current date, print the
-   available RAM memory, draw some cool graphics using video memory...
-   or anything else you feel like.
+       Tip: make 'hw.bin' should build the binary. 
 
-   You may write your function in either assembly or C, whatever seems easier
-   depending on the functionality you chose to implement.
 
-   If you start running out of memory (remember the 512-byte limitation), you
-   may save some space replacing the 'strcmp' function in 'utils.c' with the
-   handcrafted memory-optimized assembly counterpart found in 'opt.S' (edit
-   the Makefile accordingly).
+    d) Compare 'hw.bin' with 'eg.bin'.
 
-   To save even more space, you may get rid of the 'help' command, shorten
-   strings, explore compact assembly idioms (e.g. 'xor %ax, %ax' rather than
-   'mov $0, %ax') and doing manual bit twiddling.
+       Tip:   make a16 hw.bin <path>/eg.bin
+
+       Do the outputs match? (They don't necessarily have too).
+
+       Comment in the file 'SOLVING'.
+
+    e) Disassemble 'hw.bin' and compare the result with 'hw.S'.
+
+       Tip:   make hw.bin/a16
+
+       Does the output (at least approximately) matches 'hw.S'? 
+
+       Comment in the file 'SOLVING'.
+       
+    f) Boot 'hw.bin' using the 'qemu' emulator.
+
+       Tip:   make hw.bin/run
+
+       Does it work?
+
+       Comment in the file 'SOLVING'.
+       
+    g) Boot 'hw.bin' in a real piece of hardware.
+
+       Tip:  - plug a USB stick into your computer (data will be lost!)
+       
+             - check which device it is associated to (use lsblk)
+
+	     - double check if the device is correct, and then triple check
+	     
+	     - make stick IMG=hw.bin DEVICE=<your-usb-stick-device>
+
+	     - ensure that legacy boot is enabled in your BIOS setup
+
+	     - reboot your computer
+
+	Does it work?
+
+	Yeah? Go to show your friends you have written two words on the screen!!!
+	     
+        Doesn't it work? Bummer! Proceeed to item (h).
+
+	Comment in the file 'SOLVING'.
+
+
+     h) What if does not work.
+
+        If 'hw.bin' boots with 'qemu' but not with the real pieace of hardware,
+        chances are your computer has one of those ripster BIOSes that decide
+        to assume that all boot media is FAT-formatted, and thus believe they
+        can write things at the beginning of your 512-byte initialization
+        program after it has been loaded into RAM.
+
+	To handle such a situation, allow some spare space at the beginning of
+	your program, so that the BIOS can write there without messing up with
+	your program
+
+	Start your program with a jump instruction that lands at the beginning
+	of you executable code, 61 bytes below. Fill in the space between the
+	jump instruction and your code with 'not' instructions.
+
+	Tip:  Use the instruction 'jmp' and the directive '.fill'.
+
+	- Assemble your modified 'hw.S' with the GNU Assembler (as)
+	- Test it in the emulator to check everything is all right.
+	- Try to boot it in the real hardware.
+
+	Comment in the file 'SOLVING'.
+
+      i) Test 'hw.S' implementation using the GNU build chain.
+
+         - Use 'as' to assemble 'hw.S' and produce 'hw2.o'
+	 - Use 'ld' to link 'hw2.o' and producude 'hw2.bin'
+	 - Boot 'hw2.bin' using 'qemu'.
+	 - Compare 'hw.bin' and 'hw2.bin' (see tips above)
+	 - Optionally, boot 'hw.bin' in the real hardware.
+
+         Tip: You'll need to tell 'ld' where in the object file the entry point
+         of your program is (remeber, 'hw2.o' is not a flat binary). To that
+         end, you need to create a global label in 'hw.S' right at the
+         beginning of the program. Your assembly code should look like this
+
+	    '        .global _start        '
+	    '_start:                       '
+	    '        <start of your code>  '    
+
+	 (see 'eg/hw/eg-03.S' for an example)
+                   
+
+	 Comment in the file 'SOLVING'.
+
+	 
+ Reference
+ ------------------------------
+
+ [1] C Standard library, https://en.wikipedia.org/wiki/C_standard_library
 
 
  
@@ -344,4 +417,3 @@
    make foo/l	  			     open foo in 'less' program
 
  
-

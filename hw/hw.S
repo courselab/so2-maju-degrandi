@@ -1,4 +1,5 @@
 /*    SPDX-FileCopyrightText: 2021 Monaco F. J. <monaco@usp.br>
+ *    SPDX-FileCopyrightText: 2024 Maria Júlia De Grandi <maju.degrandi@usp.br>
  *   
  *    SPDX-License-Identifier: GPL-3.0-or-later
  *
