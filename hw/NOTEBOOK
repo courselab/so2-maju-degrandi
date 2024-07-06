@@ -1,3 +1,15 @@
 #    SPDX-FileCopyrightText: 2024 maju-degrandi <maju.degrandi@usp.br>
 #   
 #    SPDX-License-Identifier: GPL-3.0-or-later
+
+d) Compare 'hw.bin' with 'eg.bin'. Do the outputs match? (They don't necessarily have too).
+
+O output do comando `diff hw.bin path/eg-00.bin` é vazio - ou seja, não há diferença entre os arquivos, o que significa que o assembler se comportou da maneira esperada.
+
+e) Disassemble 'hw.bin' and compare the result with 'hw.S'. Does the output (at least approximately) matches 'hw.S'?
+
+Há poucas diferenças, mas, no geral, os resultados são semelhantes.
+
+f) Boot 'hw.bin' using the 'qemu' emulator. Does it work?
+
+Sim, a string 'Hello World' é exibida.
